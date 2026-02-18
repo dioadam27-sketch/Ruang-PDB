@@ -1,0 +1,20 @@
+
+<IfModule mod_rewrite.c>
+    Options -MultiViews
+    RewriteEngine On
+    
+    # Set Base Folder ke /PHL/
+    RewriteBase /PHL/
+
+    # 1. Pastikan Request ke api.php tidak diblokir atau di-rewrite ke index.html
+    RewriteCond %{REQUEST_URI} ^/PHL/api.php [NC]
+    RewriteRule ^ - [L]
+
+    # 2. Jika file atau folder fisik ada (css, js, images), layani langsung
+    RewriteCond %{REQUEST_FILENAME} -f [OR]
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteRule ^ - [L]
+
+    # 3. Sisanya (Routing React) arahkan ke index.html
+    RewriteRule ^ index.html [L]
+</IfModule>

@@ -63,7 +63,7 @@ const checkOverlap = (slot1: string, slot2: string) => {
 
 const App: React.FC = () => {
   // --- CONFIGURATION STATE ---
-  // Default ke URL hosting yang diberikan, atau ambil dari LocalStorage jika user pernah mengubahnya
+  // Default URL disesuaikan untuk deployment di /PHL/
   const [apiUrl, setApiUrl] = useState<string>(() => {
     return localStorage.getItem('pdb_api_url') || 'https://pkkii.pendidikan.unair.ac.id/PHL/api.php';
   });
