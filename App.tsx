@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { TIME_SLOTS, SUBJECTS, PDB_CLASSES } from './constants';
+import { TIME_SLOTS, SUBJECTS } from './constants';
 import { Room, Booking, AppState, Student, UserRole } from './types';
 import { generateTicketMessage } from './services/geminiService';
 import { ETicket } from './components/ETicket';
@@ -574,17 +574,14 @@ const App: React.FC = () => {
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Kelas PDB</label>
                     <div className="relative">
-                      <select 
+                      <input 
                         required
+                        type="text"
+                        placeholder="Contoh: PDB-01"
                         value={formData.pdbClass}
                         onChange={e => setFormData({...formData, pdbClass: e.target.value})}
-                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-blue-500 outline-none appearance-none bg-white text-gray-800 transition-shadow focus:ring-4 focus:ring-blue-50"
-                      >
-                        <option value="">Pilih Kelas</option>
-                        {PDB_CLASSES.map((cls) => (
-                          <option key={cls} value={cls}>{cls}</option>
-                        ))}
-                      </select>
+                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-blue-500 outline-none bg-white text-gray-900 transition-shadow focus:ring-4 focus:ring-blue-50"
+                      />
                       <div className="absolute right-4 top-3.5 text-gray-400 pointer-events-none">
                         <Users size={18} />
                       </div>
