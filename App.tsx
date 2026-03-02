@@ -8,6 +8,7 @@ import {
   Building2, 
   CalendarDays, 
   ChevronRight, 
+  ChevronLeft,
   Clock, 
   GraduationCap, 
   Users,
@@ -115,6 +116,7 @@ const App: React.FC = () => {
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [selectedTime, setSelectedTime] = useState<string>(TIME_SLOTS[0]);
   const [selectedRoomId, setSelectedRoomId] = useState<string>('');
+  const [currentTime, setCurrentTime] = useState(new Date());
 
   // --- DATA FETCHING ---
   // Refetch data whenever apiUrl changes
@@ -132,6 +134,14 @@ const App: React.FC = () => {
 
     return () => clearInterval(interval);
   }, [apiUrl]);
+
+  // --- DIGITAL CLOCK ---
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   const fetchRooms = async () => {
     try {
@@ -491,6 +501,17 @@ const App: React.FC = () => {
         
         {/* Left Side (Branding) */}
         <div className="w-full md:w-5/12 bg-blue-900 p-8 md:p-12 flex flex-col justify-center items-center text-center relative">
+           {/* Back Button */}
+           <a 
+             href="https://pkkii.pendidikan.unair.ac.id/"
+             className="absolute top-6 left-6 z-20 flex items-center gap-1.5 text-blue-300 hover:text-white transition-colors text-sm font-bold group"
+           >
+             <div className="bg-blue-800/50 p-1.5 rounded-lg group-hover:bg-blue-800 transition-colors">
+               <ChevronLeft size={16} />
+             </div>
+             <span>Kembali</span>
+           </a>
+
            {/* Decorative Background Circles */}
            <div className="absolute top-0 left-0 w-32 h-32 bg-blue-800 rounded-full mix-blend-multiply filter blur-xl opacity-70 -translate-x-1/2 -translate-y-1/2"></div>
            <div className="absolute bottom-0 right-0 w-32 h-32 bg-indigo-800 rounded-full mix-blend-multiply filter blur-xl opacity-70 translate-x-1/2 translate-y-1/2"></div>
@@ -503,7 +524,17 @@ const App: React.FC = () => {
               <p className="text-blue-200 text-lg font-medium leading-relaxed">
                 Sistem Pemesanan<br/>Ruang PDB
               </p>
-           </div>
+
+              {/* Digital Clock in Branding */}
+              <div className="mt-10 pt-8 border-t border-blue-800/50 w-full">
+                <div className="text-white font-mono text-4xl font-bold tracking-widest mb-2 drop-shadow-lg">
+                  {currentTime.toLocaleTimeString('id-ID', { hour12: false })}
+                </div>
+                <div className="text-blue-300 text-xs font-bold uppercase tracking-[0.3em] opacity-80">
+                  {currentTime.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long' })}
+                </div>
+              </div>
+            </div>
         </div>
 
         {/* Right Side (Form) */}
@@ -1208,25 +1239,44 @@ const App: React.FC = () => {
       {/* Navbar */}
       <header className="bg-blue-900 border-b border-blue-800 sticky top-0 z-50 shadow-md">
         <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2 cursor-pointer" onClick={() => setAppState(AppState.HOME)}>
-            <div className="bg-amber-400 p-1.5 rounded-lg text-blue-900">
-              <Building2 size={20} strokeWidth={2.5} />
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 cursor-pointer" onClick={() => setAppState(AppState.HOME)}>
+              <div className="bg-amber-400 p-1.5 rounded-lg text-blue-900">
+                <Building2 size={20} strokeWidth={2.5} />
+              </div>
+              <div>
+                <h1 className="text-lg font-bold leading-none tracking-tight text-white">PDB</h1>
+                <p className="text-[10px] text-amber-400 font-bold uppercase tracking-wide">
+                  {userRole === 'ADMIN' ? 'Administrator' : userRole === 'STUDENT' ? 'Mahasiswa' : 'Sistem'}
+                </p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-lg font-bold leading-none tracking-tight text-white">PDB</h1>
-              <p className="text-[10px] text-amber-400 font-bold uppercase tracking-wide">
-                {userRole === 'ADMIN' ? 'Administrator' : 'Mahasiswa'}
-              </p>
+
+            {/* Digital Clock */}
+            <div className="hidden sm:flex flex-col border-l border-blue-800 pl-4">
+              <span className="text-white font-mono font-bold text-lg leading-none">
+                {currentTime.toLocaleTimeString('id-ID', { hour12: false })}
+              </span>
+              <span className="text-[10px] text-blue-300 font-medium uppercase tracking-wider">
+                {currentTime.toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric', month: 'short' })}
+              </span>
             </div>
           </div>
           
-          <button 
-            onClick={handleLogout}
-            className="flex items-center gap-2 text-sm bg-blue-800 hover:bg-red-600 text-white px-3 py-1.5 rounded-lg transition-colors"
-          >
-            <LogOut size={16} />
-            <span className="hidden sm:inline">Keluar</span>
-          </button>
+          <div className="flex items-center gap-3">
+            {/* Mobile Clock (Simple) */}
+            <div className="sm:hidden text-white font-mono font-bold text-sm bg-blue-800 px-2 py-1 rounded">
+              {currentTime.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false })}
+            </div>
+            
+            <button 
+              onClick={handleLogout}
+              className="flex items-center gap-2 text-sm bg-blue-800 hover:bg-red-600 text-white px-3 py-1.5 rounded-lg transition-colors"
+            >
+              <LogOut size={16} />
+              <span className="hidden sm:inline">Keluar</span>
+            </button>
+          </div>
         </div>
       </header>
 
