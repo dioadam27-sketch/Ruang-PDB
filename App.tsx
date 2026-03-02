@@ -70,7 +70,7 @@ const App: React.FC = () => {
 
   // --- AUTH STATE ---
   const [userRole, setUserRole] = useState<UserRole>('GUEST');
-  const [loginTab, setLoginTab] = useState<'STUDENT' | 'ADMIN'>('STUDENT');
+  const [loginTab, setLoginTab] = useState<'STUDENT' | 'ADMIN' | 'DASHBOARD'>('DASHBOARD');
   const [adminPassword, setAdminPassword] = useState('');
   const [loginError, setLoginError] = useState('');
 
@@ -393,6 +393,98 @@ const App: React.FC = () => {
     </div>
   );
 
+  const renderPublicDashboard = () => {
+    const today = new Date().toISOString().split('T')[0];
+    const now = new Date();
+    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+    const ongoing = allBookings.filter(b => {
+      if (b.date !== today) return false;
+      try {
+        const [startStr, endStr] = b.timeSlot.split(' - ');
+        return currentMinutes >= getMinutes(startStr) && currentMinutes <= getMinutes(endStr);
+      } catch (e) { return false; }
+    });
+
+    const upcoming = allBookings.filter(b => {
+      if (b.date !== today) return false;
+      try {
+        const [startStr] = b.timeSlot.split(' - ');
+        return getMinutes(startStr) > currentMinutes;
+      } catch (e) { return false; }
+    }).sort((a, b) => getMinutes(a.timeSlot.split(' - ')[0]) - getMinutes(b.timeSlot.split(' - ')[0]));
+
+    return (
+      <div className="space-y-8 animate-fade-in">
+        {/* Ongoing Section */}
+        <div>
+          <div className="flex items-center gap-2 mb-4">
+            <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
+            <h3 className="font-bold text-gray-800">Sedang Berlangsung</h3>
+          </div>
+          {ongoing.length === 0 ? (
+            <div className="bg-gray-50 border border-dashed border-gray-200 rounded-2xl p-8 text-center text-gray-400 text-sm">
+              Tidak ada perkuliahan saat ini.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-4">
+              {ongoing.map(b => (
+                <div key={`public-ongoing-${b.id}`} className="bg-white border-2 border-red-50 shadow-sm rounded-2xl p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div className="flex items-center gap-4">
+                    <div className="bg-red-50 p-3 rounded-xl text-red-600">
+                      <Clock size={24} />
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-gray-900 text-lg">{b.room.name}</h4>
+                      <p className="text-sm text-gray-600 font-medium">{b.student.subject.split(' - ')[1] || b.student.subject}</p>
+                    </div>
+                  </div>
+                  <div className="flex flex-col md:items-end">
+                    <span className="text-sm font-bold text-red-600 font-mono">{b.timeSlot}</span>
+                    <span className="text-xs text-gray-400 font-medium">{b.student.name} • {b.student.pdbClass}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Upcoming Section */}
+        <div>
+          <h3 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
+            <CalendarDays size={18} className="text-blue-600" />
+            Jadwal Berikutnya (Hari Ini)
+          </h3>
+          {upcoming.length === 0 ? (
+            <div className="bg-gray-50 border border-dashed border-gray-200 rounded-2xl p-8 text-center text-gray-400 text-sm">
+              Tidak ada jadwal tersisa untuk hari ini.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {upcoming.map(b => (
+                <div key={`public-upcoming-${b.id}`} className="bg-white border border-gray-100 shadow-sm rounded-2xl p-4 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="bg-blue-50 p-2 rounded-lg text-blue-600">
+                      <MapPin size={18} />
+                    </div>
+                    <div>
+                      <p className="font-bold text-gray-800 text-sm">{b.room.name}</p>
+                      <p className="text-[10px] text-gray-500 font-medium truncate max-w-[120px]">{b.student.subject.split(' - ')[1] || b.student.subject}</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[10px] font-bold text-blue-600">{b.timeSlot}</p>
+                    <p className="text-[9px] text-gray-400">{b.student.pdbClass}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   const renderLogin = () => (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4 py-8">
       <div className="bg-white w-full max-w-5xl rounded-3xl shadow-2xl animate-fade-in-up flex flex-col md:flex-row overflow-hidden">
@@ -418,6 +510,13 @@ const App: React.FC = () => {
         <div className="w-full md:w-7/12 flex flex-col h-full bg-white">
           <div className="flex border-b border-gray-100">
             <button 
+              onClick={() => setLoginTab('DASHBOARD')}
+              className={`flex-1 py-5 text-sm font-bold transition-all flex items-center justify-center gap-2
+                ${loginTab === 'DASHBOARD' ? 'text-blue-900 border-b-2 border-blue-900 bg-blue-50' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'}`}
+            >
+              <Layout size={18} /> Dashboard
+            </button>
+            <button 
               onClick={() => setLoginTab('STUDENT')}
               className={`flex-1 py-5 text-sm font-bold transition-all flex items-center justify-center gap-2
                 ${loginTab === 'STUDENT' ? 'text-blue-900 border-b-2 border-blue-900 bg-blue-50' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'}`}
@@ -434,7 +533,9 @@ const App: React.FC = () => {
           </div>
 
           <div className="p-8 md:p-10 flex-1 overflow-y-auto">
-            {loginTab === 'STUDENT' ? (
+            {loginTab === 'DASHBOARD' && renderPublicDashboard()}
+            
+            {loginTab === 'STUDENT' && (
               <form onSubmit={handleStudentLogin} className="space-y-5">
                 {/* Pemberitahuan Penting */}
                 <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex gap-3 items-start shadow-sm">
@@ -521,7 +622,9 @@ const App: React.FC = () => {
                   <ArrowRight size={18} />
                 </button>
               </form>
-            ) : (
+            )}
+
+            {loginTab === 'ADMIN' && (
               <form onSubmit={handleAdminLogin} className="space-y-6 flex flex-col justify-center h-full">
                 <div className="text-center mb-4">
                   <h3 className="text-xl font-bold text-gray-800">Login Administrator</h3>
