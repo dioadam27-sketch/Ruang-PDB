@@ -123,6 +123,16 @@ const App: React.FC = () => {
     fetchBookings();
   }, [apiUrl]);
 
+  // --- AUTO REFRESH ---
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchRooms();
+      fetchBookings();
+    }, 15 * 60 * 1000); // 15 minutes
+
+    return () => clearInterval(interval);
+  }, [apiUrl]);
+
   const fetchRooms = async () => {
     try {
       setIsBackendError(false);
@@ -570,8 +580,65 @@ const App: React.FC = () => {
       {adminView === 'DASHBOARD' && (
         // DASHBOARD VIEW
         <>
+          {/* Ongoing Classes Section */}
+          <div className="mb-8">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
+              <h3 className="font-bold text-xl text-gray-800">Kuliah Sedang Berlangsung</h3>
+            </div>
+            
+            {(() => {
+              const today = new Date().toISOString().split('T')[0];
+              const now = new Date();
+              const currentMinutes = now.getHours() * 60 + now.getMinutes();
+              
+              const ongoing = allBookings.filter(b => {
+                if (b.date !== today) return false;
+                try {
+                  const [startStr, endStr] = b.timeSlot.split(' - ');
+                  return currentMinutes >= getMinutes(startStr) && currentMinutes <= getMinutes(endStr);
+                } catch (e) { return false; }
+              });
+
+              if (ongoing.length === 0) {
+                return (
+                  <div className="bg-gray-100 border border-dashed border-gray-300 rounded-2xl p-6 text-center text-gray-500">
+                    Tidak ada perkuliahan yang sedang berlangsung saat ini.
+                  </div>
+                );
+              }
+
+              return (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {ongoing.map(booking => (
+                    <div key={`ongoing-${booking.id}`} className="bg-white border-2 border-red-100 rounded-2xl p-5 shadow-sm relative overflow-hidden">
+                      <div className="absolute top-0 right-0 bg-red-500 text-white text-[10px] font-bold px-3 py-1 rounded-bl-lg uppercase tracking-wider animate-pulse">
+                        LIVE
+                      </div>
+                      <div className="flex items-center gap-3 mb-3">
+                        <div className="bg-red-50 p-2 rounded-lg text-red-600">
+                          <Clock size={20} />
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold text-red-600 uppercase tracking-tight">Sedang Berlangsung</p>
+                          <p className="text-sm font-mono font-bold text-gray-700">{booking.timeSlot}</p>
+                        </div>
+                      </div>
+                      <h4 className="font-bold text-gray-900 mb-1">{booking.room.name}</h4>
+                      <p className="text-sm text-gray-600 font-medium mb-3">{booking.student.subject.split(' - ')[1] || booking.student.subject}</p>
+                      <div className="flex items-center gap-2 text-xs text-gray-500 bg-gray-50 p-2 rounded-lg">
+                        <UserCircle size={14} />
+                        <span className="font-semibold">{booking.student.name} ({booking.student.pdbClass})</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
+          </div>
+
           <div className="bg-blue-100 text-blue-900 px-6 py-4 rounded-xl font-bold mb-6 flex justify-between items-center">
-             <span>Daftar Pemesanan Masuk</span>
+             <span>Daftar Semua Pemesanan</span>
              <span className="bg-white px-3 py-1 rounded-lg text-sm">{allBookings.length} Total</span>
           </div>
 
@@ -817,6 +884,47 @@ const App: React.FC = () => {
           <span>Mulai Pemesanan</span>
           <ArrowRight className="group-hover:translate-x-1 transition-transform" />
         </button>
+
+        {/* Ongoing Classes Summary for Students */}
+        {(() => {
+          const today = new Date().toISOString().split('T')[0];
+          const now = new Date();
+          const currentMinutes = now.getHours() * 60 + now.getMinutes();
+          const ongoing = allBookings.filter(b => {
+            if (b.date !== today) return false;
+            try {
+              const [startStr, endStr] = b.timeSlot.split(' - ');
+              return currentMinutes >= getMinutes(startStr) && currentMinutes <= getMinutes(endStr);
+            } catch (e) { return false; }
+          });
+
+          if (ongoing.length > 0) {
+            return (
+              <div className="mt-12 w-full max-w-2xl">
+                <div className="flex items-center justify-center gap-2 mb-4">
+                  <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
+                  <h3 className="font-bold text-gray-700">Sedang Berlangsung di Gedung Nano</h3>
+                </div>
+                <div className="grid grid-cols-1 gap-3">
+                  {ongoing.slice(0, 3).map(b => (
+                    <div key={`student-home-ongoing-${b.id}`} className="bg-white p-4 rounded-xl shadow-sm border border-red-100 flex items-center justify-between text-left">
+                      <div>
+                        <p className="font-bold text-blue-900">{b.room.name}</p>
+                        <p className="text-xs text-gray-500 truncate max-w-[200px]">{b.student.subject.split(' - ')[1] || b.student.subject}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xs font-bold text-red-600">{b.timeSlot}</p>
+                        <p className="text-[10px] text-gray-400">{b.student.pdbClass}</p>
+                      </div>
+                    </div>
+                  ))}
+                  {ongoing.length > 3 && <p className="text-[10px] text-gray-400">...dan {ongoing.length - 3} lainnya</p>}
+                </div>
+              </div>
+            );
+          }
+          return null;
+        })()}
 
         <div className="mt-12 p-6 bg-blue-50 rounded-2xl max-w-2xl text-sm text-blue-800 leading-relaxed border border-blue-100">
            <h3 className="font-bold mb-2 flex items-center justify-center gap-2"><MapPin size={16}/> Informasi Gedung Nano</h3>
