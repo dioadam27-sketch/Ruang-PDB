@@ -76,6 +76,7 @@ const App: React.FC = () => {
 const AppContent: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const [hasShownTicketNotification, setHasShownTicketNotification] = useState(false);
 
   useEffect(() => {
     switch (location.pathname) {
@@ -104,12 +105,26 @@ const AppContent: React.FC = () => {
   const [appState, setAppState] = useState<AppState>(AppState.HOME);
   const [isProcessing, setIsProcessing] = useState(false);
   const [generatedBooking, setGeneratedBooking] = useState<Booking | null>(null);
+
+  useEffect(() => {
+    setHasShownTicketNotification(false);
+  }, [generatedBooking]);
+
+  useEffect(() => {
+    if (location.pathname === '/ticket' && generatedBooking && !hasShownTicketNotification) {
+      setShowTicketNotification(true);
+      setHasShownTicketNotification(true);
+    } else if (location.pathname !== '/ticket') {
+      setHasShownTicketNotification(false);
+    }
+  }, [location.pathname, generatedBooking, hasShownTicketNotification]);
   
   // --- DELETE MODAL STATE ---
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [roomToDelete, setRoomToDelete] = useState<string | null>(null);
 
   const [showDeleteBookingModal, setShowDeleteBookingModal] = useState(false);
+  const [showTicketNotification, setShowTicketNotification] = useState(false);
   const [bookingToDelete, setBookingToDelete] = useState<string | null>(null);
 
   // --- ROOM MANAGEMENT STATE ---
@@ -1385,6 +1400,29 @@ const AppContent: React.FC = () => {
                   Ya, Hapus
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Ticket Notification Modal */}
+      {showTicketNotification && (
+        <div className="fixed inset-0 bg-black/50 z-[70] flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl transform scale-100 transition-transform">
+            <div className="text-center">
+              <div className="w-12 h-12 bg-blue-100 text-blue-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Info size={24} />
+              </div>
+              <h3 className="text-lg font-bold text-gray-900 mb-2">Penting!</h3>
+              <p className="text-gray-500 text-sm mb-6">
+                Tiket harus ditunjukkan pada petugas PDB di Lt 8 ruang 8.07 Gedung Nano.
+              </p>
+              <button 
+                onClick={() => setShowTicketNotification(false)}
+                className="w-full px-4 py-2 bg-blue-900 text-white rounded-lg font-medium hover:bg-blue-800 transition-colors shadow-lg shadow-blue-200"
+              >
+                Mengerti
+              </button>
             </div>
           </div>
         </div>
