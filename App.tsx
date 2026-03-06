@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { TIME_SLOTS, SUBJECTS } from './constants';
+import { HashRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { Room, Booking, AppState, Student, UserRole } from './types';
 import { generateTicketMessage } from './services/geminiService';
 import { ETicket } from './components/ETicket';
@@ -65,6 +66,28 @@ const checkOverlap = (slot1: string, slot2: string) => {
 };
 
 const App: React.FC = () => {
+  return (
+    <HashRouter>
+      <AppContent />
+    </HashRouter>
+  );
+};
+
+const AppContent: React.FC = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    switch (location.pathname) {
+      case '/': setAppState(AppState.HOME); break;
+      case '/booking': setAppState(AppState.BOOKING); break;
+      case '/ticket': setAppState(AppState.TICKET); break;
+      case '/admin/dashboard': setAdminView('DASHBOARD'); break;
+      case '/admin/rooms': setAdminView('ROOMS'); break;
+      case '/admin/settings': setAdminView('SETTINGS'); break;
+    }
+  }, [location.pathname]);
+
   // --- CONFIGURATION STATE ---
   // Default URL disesuaikan untuk deployment di /PHL/
   const [apiUrl, setApiUrl] = useState<string>(() => {
@@ -202,7 +225,7 @@ const App: React.FC = () => {
     e.preventDefault();
     if (formData.name && formData.nim && formData.pdbClass && formData.subject) {
       setUserRole('STUDENT');
-      setAppState(AppState.HOME);
+      navigate('/');
     }
   };
 
@@ -219,7 +242,7 @@ const App: React.FC = () => {
 
   const handleLogout = () => {
     setUserRole('GUEST');
-    setAppState(AppState.HOME);
+    navigate('/');
     setGeneratedBooking(null);
     setFormData({
       name: '',
@@ -399,7 +422,7 @@ const App: React.FC = () => {
       if (res.ok) {
         setAllBookings([newBooking, ...allBookings]);
         setGeneratedBooking(newBooking);
-        setAppState(AppState.TICKET);
+        navigate('/ticket');
       } else {
         throw new Error("API Save failed");
       }
@@ -714,19 +737,19 @@ const App: React.FC = () => {
       {/* Admin Nav Tabs */}
       <div className="flex gap-4 mb-8 overflow-x-auto pb-2">
         <button 
-          onClick={() => setAdminView('DASHBOARD')}
+          onClick={() => navigate('/admin/dashboard')}
           className={`whitespace-nowrap px-6 py-2 rounded-full text-sm font-bold transition-all ${adminView === 'DASHBOARD' ? 'bg-blue-900 text-white shadow-lg' : 'bg-white text-gray-500 hover:bg-gray-100'}`}
         >
           Dashboard Pemesanan
         </button>
         <button 
-          onClick={() => setAdminView('ROOMS')}
+          onClick={() => navigate('/admin/rooms')}
           className={`whitespace-nowrap px-6 py-2 rounded-full text-sm font-bold transition-all ${adminView === 'ROOMS' ? 'bg-blue-900 text-white shadow-lg' : 'bg-white text-gray-500 hover:bg-gray-100'}`}
         >
           Kelola Ruangan
         </button>
         <button 
-          onClick={() => setAdminView('SETTINGS')}
+          onClick={() => navigate('/admin/settings')}
           className={`whitespace-nowrap px-6 py-2 rounded-full text-sm font-bold transition-all flex items-center gap-2 ${adminView === 'SETTINGS' ? 'bg-blue-900 text-white shadow-lg' : 'bg-white text-gray-500 hover:bg-gray-100'}`}
         >
           <Settings size={16} /> Pengaturan
@@ -1042,7 +1065,7 @@ const App: React.FC = () => {
         </div>
 
         <button
-          onClick={() => setAppState(AppState.BOOKING)}
+          onClick={() => navigate('/booking')}
           className="group relative px-8 py-4 bg-amber-400 hover:bg-amber-500 text-blue-900 text-lg font-bold rounded-2xl shadow-lg shadow-amber-200 transition-all transform hover:-translate-y-1 hover:shadow-xl flex items-center gap-3"
         >
           <span>Mulai Pemesanan</span>
@@ -1100,7 +1123,7 @@ const App: React.FC = () => {
   const renderBookingForm = () => (
     <div className="max-w-4xl mx-auto px-4 py-8 animate-fade-in-up">
       <button 
-        onClick={() => setAppState(AppState.HOME)}
+        onClick={() => navigate('/')}
         className="mb-6 flex items-center text-gray-500 hover:text-blue-700 transition-colors"
       >
         <ChevronRight className="rotate-180 mr-1" size={20} />
@@ -1273,7 +1296,7 @@ const App: React.FC = () => {
       <header className="bg-blue-900 border-b border-blue-800 sticky top-0 z-50 shadow-md">
         <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2 cursor-pointer" onClick={() => setAppState(AppState.HOME)}>
+            <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate('/')}>
               <div className="bg-amber-400 p-1.5 rounded-lg text-blue-900">
                 <Building2 size={20} strokeWidth={2.5} />
               </div>
@@ -1327,7 +1350,7 @@ const App: React.FC = () => {
                 onDownload={() => {}} 
                 onNewBooking={() => {
                    setGeneratedBooking(null);
-                   setAppState(AppState.HOME);
+                   navigate('/');
                    setSelectedRoomId('');
                 }}
               />
