@@ -146,7 +146,7 @@ const App: React.FC = () => {
   const fetchRooms = async () => {
     try {
       setIsBackendError(false);
-      const res = await fetch(`${apiUrl}/rooms`);
+      const res = await fetch(`${apiUrl}/rooms?t=${Date.now()}`);
       if (res.ok) {
         const data = await res.json();
         setRooms(data);
@@ -161,7 +161,7 @@ const App: React.FC = () => {
 
   const fetchBookings = async () => {
     try {
-      const res = await fetch(`${apiUrl}/bookings`);
+      const res = await fetch(`${apiUrl}/bookings?t=${Date.now()}`);
       if (res.ok) {
         const data = await res.json();
         setAllBookings(data);
