@@ -4,6 +4,8 @@ import { TIME_SLOTS, SUBJECTS } from './constants';
 import { Room, Booking, AppState, Student, UserRole } from './types';
 import { generateTicketMessage } from './services/geminiService';
 import { ETicket } from './components/ETicket';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import { 
   Building2, 
   CalendarDays, 
@@ -120,6 +122,29 @@ const App: React.FC = () => {
 
   // --- DATA FETCHING ---
   // Refetch data whenever apiUrl changes
+  
+  const exportToPDF = () => {
+    const doc = new jsPDF();
+    doc.text("Daftar Semua Pemesanan Ruang PDB", 14, 15);
+    
+    const tableData = allBookings.map(b => [
+      b.date,
+      b.timeSlot,
+      b.room.name,
+      b.student.name,
+      b.student.subject,
+      b.student.pdbClass
+    ]);
+
+    autoTable(doc, {
+      head: [['Tanggal', 'Waktu', 'Ruang', 'Nama', 'Mata Kuliah', 'Kelas']],
+      body: tableData,
+      startY: 20,
+    });
+    
+    doc.save('Daftar_Pemesanan_PDB.pdf');
+  };
+
   useEffect(() => {
     fetchRooms();
     fetchBookings();
@@ -770,7 +795,15 @@ const App: React.FC = () => {
 
           <div className="bg-blue-100 text-blue-900 px-6 py-4 rounded-xl font-bold mb-6 flex justify-between items-center">
              <span>Daftar Semua Pemesanan</span>
-             <span className="bg-white px-3 py-1 rounded-lg text-sm">{allBookings.length} Total</span>
+             <div className="flex gap-2">
+               <button 
+                 onClick={exportToPDF}
+                 className="bg-white text-blue-900 px-3 py-1 rounded-lg text-sm hover:bg-blue-50 transition-colors"
+               >
+                 Export PDF
+               </button>
+               <span className="bg-white px-3 py-1 rounded-lg text-sm">{allBookings.length} Total</span>
+             </div>
           </div>
 
           {allBookings.length === 0 ? (
