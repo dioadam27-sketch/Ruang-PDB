@@ -3,7 +3,9 @@ import { GoogleGenAI } from "@google/genai";
 import { Student } from '../types';
 
 const getAiClient = () => {
-  const apiKey = process.env.API_KEY;
+  // Use VITE polyfilled API_KEY or GEMINI_API_KEY
+  const apiKey = (typeof process !== 'undefined' && process.env) ? (process.env.API_KEY || process.env.GEMINI_API_KEY) : undefined;
+  
   if (!apiKey) {
     console.warn("API Key is missing. AI features will be disabled.");
     return null;

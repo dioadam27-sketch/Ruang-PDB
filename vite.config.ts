@@ -5,10 +5,17 @@ import react from '@vitejs/plugin-react';
 export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, '.', '');
     return {
-      base: '/PHL/',
+      base: '/',
       server: {
         port: 3000,
         host: '0.0.0.0',
+        proxy: {
+          '/api-proxy': {
+            target: 'https://pkkii.pendidikan.unair.ac.id/PHL/api.php',
+            changeOrigin: true,
+            rewrite: (path) => path.replace(/^\/api-proxy/, ''),
+          }
+        }
       },
       plugins: [react()],
       define: {

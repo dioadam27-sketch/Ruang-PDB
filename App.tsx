@@ -28,6 +28,7 @@ import {
   Trash2,
   Layout,
   BookOpen,
+  CalendarRange,
   AlertTriangle,
   BookMarked,
   CheckCircle,
@@ -74,6 +75,7 @@ const App: React.FC = () => {
 };
 
 const AppContent: React.FC = () => {
+  console.log("[PDB] AppContent mounting...");
   const navigate = useNavigate();
   const location = useLocation();
   const [hasShownTicketNotification, setHasShownTicketNotification] = useState(false);
@@ -159,6 +161,7 @@ const AppContent: React.FC = () => {
   const [currentTime, setCurrentTime] = useState(new Date());
 
   // --- DATA FETCHING ---
+  // v2.1 Proxy Fix
   // Refetch data whenever apiUrl changes
   
   const exportToPDF = () => {
@@ -209,28 +212,74 @@ const AppContent: React.FC = () => {
   const fetchRooms = async () => {
     try {
       setIsBackendError(false);
-      const res = await fetch(`${apiUrl}/rooms?t=${Date.now()}`);
+      // Use internal proxy to bypass CORS
+      const targetUrl = `/api-proxy/rooms?t=${Date.now()}`;
+      console.log(`[PDB] Fetching rooms via proxy: ${targetUrl}`);
+      
+      const res = await fetch(targetUrl, {
+        cache: 'no-store'
+      });
+      
       if (res.ok) {
         const data = await res.json();
-        setRooms(data);
+        setRooms(Array.isArray(data) ? data : []);
+        setIsBackendError(false);
       } else {
-        throw new Error("Server responded with error");
+        const errText = await res.text();
+        console.error("[PDB] Rooms status error:", res.status, errText);
+        throw new Error(`HTTP ${res.status}`);
       }
     } catch (error) {
-      console.error("Failed to fetch rooms", error);
+      console.error("[PDB] Failed to fetch rooms:", error);
       setIsBackendError(true);
+      if (error instanceof Error) {
+        localStorage.setItem('pdb_last_error', error.message);
+      }
     }
   };
 
   const fetchBookings = async () => {
     try {
-      const res = await fetch(`${apiUrl}/bookings?t=${Date.now()}`);
+      // Use internal proxy to bypass CORS
+      const targetUrl = `/api-proxy/bookings?t=${Date.now()}`;
+      console.log(`[PDB] Fetching bookings via proxy: ${targetUrl}`);
+      
+      const res = await fetch(targetUrl, {
+        cache: 'no-store'
+      });
+      
       if (res.ok) {
         const data = await res.json();
-        setAllBookings(data);
+        const validatedData = Array.isArray(data) ? data.map((b: any) => ({
+          ...b,
+          id: b.id || `b-${Math.random().toString(36).substr(2, 5)}`,
+          room: b.room || { 
+            id: b.roomId || 'unknown', 
+            name: b.roomName || 'Ruangan', 
+            capacity: parseInt(b.roomCapacity) || 0, 
+            location: b.roomLocation || '', 
+            isAvailable: true 
+          },
+          student: b.student || { 
+            name: b.studentName || 'Siswa', 
+            nim: b.studentNim || '', 
+            pdbClass: b.pdbClass || '', 
+            subject: b.subject || '', 
+            contact: b.contact || '' 
+          },
+          status: b.status || 'APPROVED',
+          timestamp: parseInt(b.timestamp) || Date.now()
+        })) : [];
+        
+        setAllBookings(validatedData);
+      } else {
+        const errText = await res.text();
+        console.error("[PDB] Bookings status error:", res.status, errText);
+        throw new Error(`HTTP ${res.status}`);
       }
     } catch (error) {
-      console.error("Failed to fetch bookings", error);
+      console.error("[PDB] Failed to fetch bookings:", error);
+      setIsBackendError(true);
     }
   };
 
@@ -271,11 +320,16 @@ const AppContent: React.FC = () => {
   // --- ADMIN SETTINGS HANDLER ---
   const handleSaveSettings = (e: React.FormEvent) => {
     e.preventDefault();
-    // Remove trailing slash if exists to avoid double slash issues
-    const cleanUrl = tempApiUrl.replace(/\/$/, "");
-    localStorage.setItem('pdb_api_url', cleanUrl);
-    setApiUrl(cleanUrl);
-    alert("Konfigurasi API berhasil disimpan! Data akan dimuat ulang.");
+    let finalUrl = tempApiUrl.trim().replace(/\/$/, "");
+    if (finalUrl && !finalUrl.startsWith('http')) {
+      finalUrl = 'https://' + finalUrl;
+    }
+    localStorage.setItem('pdb_api_url', finalUrl);
+    setApiUrl(finalUrl);
+    // Explicitly call fetchers for instant feedback
+    fetchRooms();
+    fetchBookings();
+    alert("Konfigurasi API berhasil disimpan! Mencoba menghubungkan ke server...");
   };
 
   // --- ADMIN ROOM MANAGEMENT ---
@@ -306,7 +360,7 @@ const AppContent: React.FC = () => {
     };
     
     try {
-      const res = await fetch(`${apiUrl}/rooms`, {
+      const res = await fetch(`/api-proxy/rooms`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(room)
@@ -343,7 +397,7 @@ const AppContent: React.FC = () => {
   const confirmDeleteRoom = async () => {
     if (roomToDelete) {
       try {
-        const res = await fetch(`${apiUrl}/rooms/${roomToDelete}`, {
+        const res = await fetch(`/api-proxy/rooms/${roomToDelete}`, {
           method: 'DELETE'
         });
 
@@ -369,7 +423,7 @@ const AppContent: React.FC = () => {
   const confirmDeleteBooking = async () => {
     if (bookingToDelete) {
       try {
-        const res = await fetch(`${apiUrl}/bookings/${bookingToDelete}`, {
+        const res = await fetch(`/api-proxy/bookings/${bookingToDelete}`, {
           method: 'DELETE'
         });
 
@@ -428,7 +482,7 @@ const AppContent: React.FC = () => {
       };
 
       // Save to API
-      const res = await fetch(`${apiUrl}/bookings`, {
+      const res = await fetch(`/api-proxy/bookings`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newBooking)
@@ -455,8 +509,11 @@ const AppContent: React.FC = () => {
     <div className="bg-red-500 text-white p-4 text-center sticky top-0 z-[60] shadow-lg animate-fade-in flex items-center justify-center gap-2">
       <WifiOff size={20} />
       <span>
-        <strong>Gagal Terhubung ke Server!</strong> Periksa konfigurasi API di Admin atau pastikan server online.
+        <strong>Gagal Terhubung ke Server!</strong> Periksa konfigurasi di Admin atau pastikan backend online.
       </span>
+      <div className="hidden md:block text-[10px] bg-red-600 px-2 py-1 rounded font-mono opacity-80 max-w-[200px] truncate">
+        URL: {apiUrl}
+      </div>
       <button 
         onClick={() => { fetchRooms(); fetchBookings(); }}
         className="ml-4 px-3 py-1 bg-white text-red-600 rounded-lg text-sm font-bold hover:bg-gray-100"
@@ -1079,6 +1136,47 @@ const AppContent: React.FC = () => {
             <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full font-medium">{formData.subject.split('-')[1] || formData.subject}</span>
         </div>
 
+        {/* Booking History / Status for Students */}
+        {(() => {
+          const myBookings = allBookings.filter(b => b.student?.nim === formData.nim);
+          if (myBookings.length > 0) {
+            return (
+              <div className="mt-12 w-full max-w-2xl text-left">
+                <h3 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
+                  <BookMarked size={20} className="text-blue-600" />
+                  Pemesanan Saya
+                </h3>
+                <div className="space-y-3">
+                  {myBookings.map(b => (
+                    <div key={`my-booking-${b.id}`} className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 hover:border-blue-200 transition-all">
+                      <div className="flex justify-between items-start mb-2">
+                        <div>
+                          <p className="font-bold text-blue-900 text-lg">{b.room.name}</p>
+                          <p className="text-xs text-gray-500">{b.student.subject.split('-')[1] || b.student.subject}</p>
+                        </div>
+                        <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-[10px] font-bold uppercase">
+                          {b.status}
+                        </span>
+                      </div>
+                      <div className="flex gap-4 mt-4 py-3 border-t border-gray-50">
+                        <div className="flex items-center gap-1.5 text-xs text-gray-600">
+                          <CalendarDays size={14} className="text-gray-400" />
+                          {b.date}
+                        </div>
+                        <div className="flex items-center gap-1.5 text-xs text-gray-600">
+                          <Clock size={14} className="text-gray-400" />
+                          {b.timeSlot}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          }
+          return null;
+        })()}
+
         <button
           onClick={() => navigate('/booking')}
           className="group relative px-8 py-4 bg-amber-400 hover:bg-amber-500 text-blue-900 text-lg font-bold rounded-2xl shadow-lg shadow-amber-200 transition-all transform hover:-translate-y-1 hover:shadow-xl flex items-center gap-3"
@@ -1127,6 +1225,78 @@ const AppContent: React.FC = () => {
           }
           return null;
         })()}
+
+        {/* Global Schedule Review for Students - More prominent */}
+        {allBookings.length > 0 && (
+          <div className="mt-16 w-full max-w-5xl text-left bg-blue-900 rounded-[32px] p-8 shadow-2xl shadow-blue-200">
+            <div className="flex items-center justify-between mb-8">
+              <div className="flex items-center gap-3">
+                <button 
+                  onClick={() => { fetchRooms(); fetchBookings(); }}
+                  className="p-2 bg-blue-800 hover:bg-blue-700 rounded-xl text-blue-200 transition-colors"
+                  title="Perbarui Jadwal"
+                >
+                  <Loader2 size={18} className={isProcessing ? "animate-spin" : ""} />
+                </button>
+                <div className="p-3 bg-blue-800 rounded-2xl">
+                  <CalendarRange size={24} className="text-blue-200" />
+                </div>
+                <div>
+                  <h3 className="text-2xl font-bold text-white">Jadwal Penggunaan Ruang</h3>
+                  <p className="text-blue-300 text-sm">Gedung Nano - PDB Universitas Airlangga</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 bg-blue-800 px-4 py-2 rounded-xl text-blue-100 text-xs font-bold">
+                <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                {allBookings.length} Pemesanan Aktif
+              </div>
+            </div>
+
+            <div className="bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 overflow-hidden">
+               <div className="overflow-x-auto">
+                 <table className="w-full text-sm text-left">
+                   <thead>
+                     <tr className="bg-white/10 text-blue-100">
+                       <th className="px-6 py-4 font-bold">Ruangan</th>
+                       <th className="px-6 py-4 font-bold">Tanggal & Waktu</th>
+                       <th className="px-6 py-4 font-bold">Peminjam</th>
+                       <th className="px-6 py-4 font-bold">Mata Kuliah</th>
+                     </tr>
+                   </thead>
+                   <tbody className="divide-y divide-white/5">
+                     {allBookings.slice(0, 15).map(b => (
+                       <tr key={`student-table-hero-${b.id}`} className="hover:bg-white/5 transition-colors group">
+                         <td className="px-6 py-5">
+                            <span className="font-bold text-white group-hover:text-amber-400 transition-colors uppercase tracking-wider">{b.room.name}</span>
+                         </td>
+                         <td className="px-6 py-5">
+                           <div className="flex flex-col">
+                             <span className="text-blue-100 font-medium">{b.date}</span>
+                             <span className="text-blue-300 text-xs mt-1 bg-blue-800/50 w-fit px-2 py-0.5 rounded">{b.timeSlot}</span>
+                           </div>
+                         </td>
+                         <td className="px-6 py-5">
+                            <div className="text-white font-medium">{b.student.name}</div>
+                            <div className="text-blue-400 text-[10px]">{b.student.nim} • {b.student.pdbClass}</div>
+                         </td>
+                         <td className="px-6 py-5">
+                            <span className="text-blue-200 text-xs leading-tight line-clamp-2 max-w-[200px]">
+                                {b.student.subject.split('-')[1] || b.student.subject}
+                            </span>
+                         </td>
+                       </tr>
+                     ))}
+                   </tbody>
+                 </table>
+               </div>
+               {allBookings.length > 15 && (
+                 <div className="p-4 bg-blue-950/50 text-center text-xs text-blue-400 border-t border-white/5">
+                    Menampilkan 15 pemesanan terbaru. Akses Admin untuk melihat seluruh data.
+                 </div>
+               )}
+            </div>
+          </div>
+        )}
 
         <div className="mt-12 p-6 bg-blue-50 rounded-2xl max-w-2xl text-sm text-blue-800 leading-relaxed border border-blue-100">
            <h3 className="font-bold mb-2 flex items-center justify-center gap-2"><MapPin size={16}/> Informasi Gedung Nano</h3>
